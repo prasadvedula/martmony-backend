@@ -36,7 +36,7 @@ const NAK_TO_RASI: Record<string, string> = {
   Vishakha: 'Tula (Libra)',           Visakha: 'Tula (Libra)',
   Anuradha: 'Vrishchika (Scorpio)',   Jyeshtha: 'Vrishchika (Scorpio)', Jyesta: 'Vrishchika (Scorpio)',
   Moola: 'Dhanu (Sagittarius)',       Mula: 'Dhanu (Sagittarius)',
-  'Purva Ashadha': 'Dhanu (Sagittarius)', PurvaAshadha: 'Dhanu (Sagittarius)', Poorvashada: 'Dhanu (Sagittarius)', 'Poorvashada': 'Dhanu (Sagittarius)',
+  'Purva Ashadha': 'Dhanu (Sagittarius)', PurvaAshadha: 'Dhanu (Sagittarius)', Poorvashada: 'Dhanu (Sagittarius)',
   'Uttara Ashadha': 'Makara (Capricorn)', UttaraAshadha: 'Makara (Capricorn)', Uttarashada: 'Makara (Capricorn)',
   Shravana: 'Makara (Capricorn)',     Sravana: 'Makara (Capricorn)',
   Dhanishtha: 'Makara (Capricorn)',   Dhanistha: 'Makara (Capricorn)',
