@@ -39,7 +39,7 @@ const NAK_TO_RASI: Record<string, string> = {
   'Purva Ashadha': 'Dhanu (Sagittarius)', PurvaAshadha: 'Dhanu (Sagittarius)', Poorvashada: 'Dhanu (Sagittarius)',
   'Uttara Ashadha': 'Makara (Capricorn)', UttaraAshadha: 'Makara (Capricorn)', Uttarashada: 'Makara (Capricorn)',
   Shravana: 'Makara (Capricorn)',     Sravana: 'Makara (Capricorn)',
-  Dhanishtha: 'Makara (Capricorn)',   Dhanistha: 'Makara (Capricorn)',
+  Dhanishtha: 'Makara (Capricorn)',   Dhanistha: 'Makara (Capricorn)',    Dhanishta: 'Makara (Capricorn)',
   Shatabhisha: 'Kumbha (Aquarius)',   Satabhisha: 'Kumbha (Aquarius)', Shataraka: 'Kumbha (Aquarius)',
   'Purva Bhadrapada': 'Kumbha (Aquarius)', PurvaBhadrapada: 'Kumbha (Aquarius)',
   'Uttara Bhadrapada': 'Meena (Pisces)', UttaraBhadrapada: 'Meena (Pisces)',
@@ -48,30 +48,37 @@ const NAK_TO_RASI: Record<string, string> = {
   Aswini: 'Mesha (Aries)', Krittka: 'Vrishabha (Taurus)',
 }
 
-// Nakshatras that span two signs (pada-based)
-const PADA_SPLIT: Record<string, { pada1: string; other: string }> = {
-  Krittika: { pada1: 'Mesha (Aries)',         other: 'Vrishabha (Taurus)'    },
-  Punarvasu: { pada1: 'Mithuna (Gemini)',      other: 'Karka (Cancer)'        }, // pada4→Cancer
-  Chitra:    { pada1: 'Kanya (Virgo)',         other: 'Tula (Libra)'          },
-  Vishakha:  { pada1: 'Tula (Libra)',          other: 'Vrishchika (Scorpio)'  },
-  Visakha:   { pada1: 'Tula (Libra)',          other: 'Vrishchika (Scorpio)'  },
-  'Uttara Phalguni': { pada1: 'Simha (Leo)',   other: 'Kanya (Virgo)'         },
-  UttaraPhalguni:   { pada1: 'Simha (Leo)',    other: 'Kanya (Virgo)'         },
-  Uttaraphalguni:   { pada1: 'Simha (Leo)',    other: 'Kanya (Virgo)'         },
-  'Uttara Ashadha': { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)' },
-  UttaraAshadha:    { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)' },
-  Uttarashada:      { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)' },
-  'Purva Bhadrapada': { pada1: 'Kumbha (Aquarius)', other: 'Meena (Pisces)'   },
-  PurvaBhadrapada:    { pada1: 'Kumbha (Aquarius)', other: 'Meena (Pisces)'   },
+// Nakshatras that span two signs — function returns correct rasi for each pada
+// Rules: Krittika p1→Aries, p2-4→Taurus | Punarvasu p1-3→Gemini, p4→Cancer
+//        Uttara Phalguni p1→Leo, p2-4→Virgo | Chitra p1-2→Virgo, p3-4→Libra
+//        Vishakha p1-3→Libra, p4→Scorpio | Uttara Ashadha p1→Sagittarius, p2-4→Capricorn
+//        Dhanishtha p1-2→Capricorn, p3-4→Aquarius | Purva Bhadrapada p1-3→Aquarius, p4→Pisces
+type PadaFn = (pada: number) => string
+const PADA_SPLIT: Record<string, PadaFn> = {
+  Krittika:           (p) => p === 1 ? 'Mesha (Aries)'         : 'Vrishabha (Taurus)',
+  Punarvasu:          (p) => p <= 3  ? 'Mithuna (Gemini)'      : 'Karka (Cancer)',
+  Chitra:             (p) => p <= 2  ? 'Kanya (Virgo)'         : 'Tula (Libra)',
+  Vishakha:           (p) => p <= 3  ? 'Tula (Libra)'          : 'Vrishchika (Scorpio)',
+  Visakha:            (p) => p <= 3  ? 'Tula (Libra)'          : 'Vrishchika (Scorpio)',
+  'Uttara Phalguni':  (p) => p === 1 ? 'Simha (Leo)'           : 'Kanya (Virgo)',
+  UttaraPhalguni:     (p) => p === 1 ? 'Simha (Leo)'           : 'Kanya (Virgo)',
+  Uttaraphalguni:     (p) => p === 1 ? 'Simha (Leo)'           : 'Kanya (Virgo)',
+  'Uttara Ashadha':   (p) => p === 1 ? 'Dhanu (Sagittarius)'   : 'Makara (Capricorn)',
+  UttaraAshadha:      (p) => p === 1 ? 'Dhanu (Sagittarius)'   : 'Makara (Capricorn)',
+  Uttarashada:        (p) => p === 1 ? 'Dhanu (Sagittarius)'   : 'Makara (Capricorn)',
+  Dhanishtha:         (p) => p <= 2  ? 'Makara (Capricorn)'    : 'Kumbha (Aquarius)',
+  Dhanistha:          (p) => p <= 2  ? 'Makara (Capricorn)'    : 'Kumbha (Aquarius)',
+  Dhanishta:          (p) => p <= 2  ? 'Makara (Capricorn)'    : 'Kumbha (Aquarius)',
+  'Purva Bhadrapada': (p) => p <= 3  ? 'Kumbha (Aquarius)'    : 'Meena (Pisces)',
+  PurvaBhadrapada:    (p) => p <= 3  ? 'Kumbha (Aquarius)'    : 'Meena (Pisces)',
 }
 
 function nakToRasi(constellation: string): string {
   const parts = constellation.split('-')
   const name  = parts[0].trim()
-  const pada  = parts[1] ? parseInt(parts[1].trim()) : 0
-  const split = PADA_SPLIT[name]
-  if (split) return pada === 1 ? split.pada1 : split.other
-  if (name === 'Punarvasu' && pada === 4) return 'Karka (Cancer)'
+  const pada  = parts[1] ? parseInt(parts[1].trim()) : 1
+  const splitFn = PADA_SPLIT[name]
+  if (splitFn) return splitFn(pada)
   return NAK_TO_RASI[name] ?? ''
 }
 
