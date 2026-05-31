@@ -226,12 +226,21 @@ router.post('/calculate', async (req: Request, res: Response) => {
     const mo   = String(dob.getUTCMonth() + 1).padStart(2, '0')
     const yyyy = dob.getUTCFullYear()
 
-    // Parse time
+    // Parse time — handles both 24-hour ("19:30") and 12-hour ("07:30 PM" / "7:30 pm")
     let hh = '12', mm = '00'
     if (birthTime) {
-      const parts = birthTime.split(':')
-      hh = String(parseInt(parts[0]) || 12).padStart(2, '0')
-      mm = String(parseInt(parts[1]) || 0).padStart(2, '0')
+      const t        = birthTime.trim()
+      const isPM     = /pm/i.test(t)
+      const isAM     = /am/i.test(t)
+      const clean    = t.replace(/[apmAPM\s]/g, '')   // strip am/pm/spaces → "07:30"
+      const parts    = clean.split(':')
+      let hour       = parseInt(parts[0]) || 0
+      const minute   = parseInt(parts[1]) || 0
+      // Convert 12-hour → 24-hour
+      if (isPM && hour !== 12) hour += 12
+      if (isAM && hour === 12) hour  = 0
+      hh = String(hour).padStart(2, '0')
+      mm = String(minute).padStart(2, '0')
     }
 
     // VedAstro StdTime format: "HH:MM DD/MM/YYYY +05:30"
