@@ -9,6 +9,7 @@ import matchRoutes   from './routes/match'
 import uploadRoutes  from './routes/upload'
 import consentRoutes from './routes/consent'
 import adminRoutes   from './routes/admin'
+import astroRoutes   from './routes/astro'
 
 const app  = express()
 const PORT = process.env.PORT || 4000
@@ -40,6 +41,7 @@ app.use('/api/match',    matchRoutes)
 app.use('/api/upload',   uploadRoutes)
 app.use('/api/consent',  consentRoutes)
 app.use('/api/admin',    adminRoutes)
+app.use('/api/astro',    astroRoutes)
 
 // ── Health check ──────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
