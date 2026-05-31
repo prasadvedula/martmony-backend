@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "npm install --include=dev && npm run build"
 
 [deploy]
-startCommand = "npx prisma db push && npx prisma db seed && npm start"
+startCommand = "npx prisma db push && npx prisma db seed && npx tsx prisma/seed-knbs.ts && npm start"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

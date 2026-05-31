@@ -9,6 +9,7 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-knbs": "tsx prisma/seed-knbs.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {

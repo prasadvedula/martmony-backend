@@ -32,23 +32,27 @@ router.post('/register', async (req: Request, res: Response) => {
 })
 
 // POST /api/auth/login
+// Accepts email or phone (6-digit ID for KNBS batch users) in the `email` field
 router.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body
   if (!email || !password) {
     return res.status(400).json({ success: false, error: 'Email and password required' })
   }
 
-  const user = await prisma.user.findUnique({ where: { email } })
+  let user = await prisma.user.findUnique({ where: { email } })
+  if (!user) {
+    user = await prisma.user.findUnique({ where: { phone: email } })
+  }
   if (!user?.passwordHash || !(await compare(password, user.passwordHash))) {
     return res.status(401).json({ success: false, error: 'Invalid email or password' })
   }
 
-  const token = signToken({ id: user.id, email: user.email!, role: user.role, name: user.name ?? '' })
+  const token = signToken({ id: user.id, email: user.email ?? user.phone!, role: user.role, name: user.name ?? '' })
 
   return res.json({
     success: true,
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: { id: user.id, email: user.email, phone: user.phone, name: user.name, role: user.role },
   })
 })
 
