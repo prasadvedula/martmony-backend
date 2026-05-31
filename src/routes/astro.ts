@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express'
 const router = Router()
 const VEDASTRO = 'https://api.vedastro.org'
 
-// ── Sign name mappings ────────────────────────────────────────────
+// ── Sign mappings ─────────────────────────────────────────────────
 const ENG_TO_RASI: Record<string, string> = {
   Aries: 'Mesha (Aries)', Taurus: 'Vrishabha (Taurus)', Gemini: 'Mithuna (Gemini)',
   Cancer: 'Karka (Cancer)', Leo: 'Simha (Leo)', Virgo: 'Kanya (Virgo)',
@@ -16,63 +16,62 @@ const ENG_TO_NUM: Record<string, number> = {
   Libra: 7, Scorpio: 8, Sagittarius: 9, Capricorn: 10, Aquarius: 11, Pisces: 12,
 }
 
-// ── Nakshatra → Rasi (Sanskrit-English form) ──────────────────────
+const NUM_TO_ENG: Record<number, string> = {}
+Object.entries(ENG_TO_NUM).forEach(([k, v]) => { NUM_TO_ENG[v] = k })
+
+// ── Nakshatra → Rasi ──────────────────────────────────────────────
 const NAK_TO_RASI: Record<string, string> = {
-  Ashwini: 'Mesha (Aries)',          Bharani: 'Mesha (Aries)',         Krittika: 'Mesha (Aries)',
-  Rohini: 'Vrishabha (Taurus)',      Mrigashira: 'Vrishabha (Taurus)', Mrigasira: 'Vrishabha (Taurus)',
-  Ardra: 'Mithuna (Gemini)',         Aridra: 'Mithuna (Gemini)',       Punarvasu: 'Mithuna (Gemini)',
-  Pushya: 'Karka (Cancer)',          Pushyami: 'Karka (Cancer)',        Ashlesha: 'Karka (Cancer)',  Aslesha: 'Karka (Cancer)',
+  Ashwini: 'Mesha (Aries)',           Bharani: 'Mesha (Aries)',
+  Krittika: 'Vrishabha (Taurus)',     // pada 2-4; pada 1 → Aries (handled by PADA_SPLIT)
+  Rohini: 'Vrishabha (Taurus)',       Mrigashira: 'Mithuna (Gemini)', Mrigasira: 'Mithuna (Gemini)',
+  Ardra: 'Mithuna (Gemini)',          Aridra: 'Mithuna (Gemini)',
+  Punarvasu: 'Mithuna (Gemini)',      // pada 4 → Cancer (PADA_SPLIT)
+  Pushya: 'Karka (Cancer)',           Pushyami: 'Karka (Cancer)',
+  Ashlesha: 'Karka (Cancer)',         Aslesha: 'Karka (Cancer)',
   Magha: 'Simha (Leo)',
-  'Purva Phalguni': 'Simha (Leo)',   Poorvaphalguni: 'Simha (Leo)',     PurvaPhalguni: 'Simha (Leo)',
-  'Uttara Phalguni': 'Simha (Leo)',  Uttaraphalguni: 'Simha (Leo)',     UttaraPhalguni: 'Simha (Leo)',
-  Hasta: 'Kanya (Virgo)',            Chitra: 'Kanya (Virgo)',
-  Swati: 'Tula (Libra)',             Swathi: 'Tula (Libra)',
-  Vishakha: 'Tula (Libra)',          Anuradha: 'Vrishchika (Scorpio)', Jyeshtha: 'Vrishchika (Scorpio)',
-  Moola: 'Dhanu (Sagittarius)',      Mula: 'Dhanu (Sagittarius)',
-  'Purva Ashadha': 'Dhanu (Sagittarius)',  Poorvashadha: 'Dhanu (Sagittarius)',  PurvaAshadha: 'Dhanu (Sagittarius)',
-  'Uttara Ashadha': 'Dhanu (Sagittarius)', Uttarashadha: 'Dhanu (Sagittarius)', UttaraAshadha: 'Dhanu (Sagittarius)',
-  Shravana: 'Makara (Capricorn)',    Sravana: 'Makara (Capricorn)',
-  Dhanishtha: 'Makara (Capricorn)',  Dhanistha: 'Makara (Capricorn)',
-  Shatabhisha: 'Kumbha (Aquarius)', Satabhisha: 'Kumbha (Aquarius)',  Shatataraka: 'Kumbha (Aquarius)',
-  'Purva Bhadrapada': 'Kumbha (Aquarius)',  Poorvabhadra: 'Kumbha (Aquarius)',  PurvaBhadrapada: 'Kumbha (Aquarius)',
-  'Uttara Bhadrapada': 'Meena (Pisces)',    Uttarabhadra: 'Meena (Pisces)',     UttaraBhadrapada: 'Meena (Pisces)',
+  'Purva Phalguni': 'Simha (Leo)',    PurvaPhalguni: 'Simha (Leo)',   Poorvaphalguni: 'Simha (Leo)',
+  'Uttara Phalguni': 'Kanya (Virgo)', UttaraPhalguni: 'Kanya (Virgo)', Uttaraphalguni: 'Kanya (Virgo)',
+  Hasta: 'Kanya (Virgo)',             Chitra: 'Tula (Libra)',         // pada 1-2 Virgo, 3-4 Libra → use Libra as majority
+  Swati: 'Tula (Libra)',              Swathi: 'Tula (Libra)',
+  Vishakha: 'Tula (Libra)',           Visakha: 'Tula (Libra)',
+  Anuradha: 'Vrishchika (Scorpio)',   Jyeshtha: 'Vrishchika (Scorpio)', Jyesta: 'Vrishchika (Scorpio)',
+  Moola: 'Dhanu (Sagittarius)',       Mula: 'Dhanu (Sagittarius)',
+  'Purva Ashadha': 'Dhanu (Sagittarius)', PurvaAshadha: 'Dhanu (Sagittarius)', Poorvashada: 'Dhanu (Sagittarius)', 'Poorvashada': 'Dhanu (Sagittarius)',
+  'Uttara Ashadha': 'Makara (Capricorn)', UttaraAshadha: 'Makara (Capricorn)', Uttarashada: 'Makara (Capricorn)',
+  Shravana: 'Makara (Capricorn)',     Sravana: 'Makara (Capricorn)',
+  Dhanishtha: 'Makara (Capricorn)',   Dhanistha: 'Makara (Capricorn)',
+  Shatabhisha: 'Kumbha (Aquarius)',   Satabhisha: 'Kumbha (Aquarius)', Shataraka: 'Kumbha (Aquarius)',
+  'Purva Bhadrapada': 'Kumbha (Aquarius)', PurvaBhadrapada: 'Kumbha (Aquarius)',
+  'Uttara Bhadrapada': 'Meena (Pisces)', UttaraBhadrapada: 'Meena (Pisces)',
   Revati: 'Meena (Pisces)',
+  // Alternate spellings used by VedAstro
+  Aswini: 'Mesha (Aries)', Krittka: 'Vrishabha (Taurus)',
 }
 
-// Nakshatras that span two signs (pada-dependent)
+// Nakshatras that span two signs (pada-based)
 const PADA_SPLIT: Record<string, { pada1: string; other: string }> = {
-  Krittika:        { pada1: 'Mesha (Aries)',        other: 'Vrishabha (Taurus)'    },
-  Mrigashira:      { pada1: 'Vrishabha (Taurus)',   other: 'Mithuna (Gemini)'       },
-  Mrigasira:       { pada1: 'Vrishabha (Taurus)',   other: 'Mithuna (Gemini)'       },
-  Chitra:          { pada1: 'Kanya (Virgo)',         other: 'Tula (Libra)'           },
-  Vishakha:        { pada1: 'Tula (Libra)',          other: 'Vrishchika (Scorpio)'   },
-  Punarvasu:       { pada1: 'Mithuna (Gemini)',      other: 'Karka (Cancer)'         }, // pada4→Cancer
-  'Uttara Phalguni': { pada1: 'Simha (Leo)',         other: 'Kanya (Virgo)'          },
-  Uttaraphalguni:  { pada1: 'Simha (Leo)',           other: 'Kanya (Virgo)'          },
-  UttaraPhalguni:  { pada1: 'Simha (Leo)',           other: 'Kanya (Virgo)'          },
-  'Uttara Ashadha': { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)'     },
-  Uttarashadha:    { pada1: 'Dhanu (Sagittarius)',  other: 'Makara (Capricorn)'     },
-  UttaraAshadha:   { pada1: 'Dhanu (Sagittarius)',  other: 'Makara (Capricorn)'     },
-  Uttarashada:     { pada1: 'Dhanu (Sagittarius)',  other: 'Makara (Capricorn)'     },
-  'Purva Bhadrapada': { pada1: 'Kumbha (Aquarius)', other: 'Meena (Pisces)'         },
-  Poorvabhadra:    { pada1: 'Kumbha (Aquarius)',    other: 'Meena (Pisces)'         },
-  PurvaBhadrapada: { pada1: 'Kumbha (Aquarius)',    other: 'Meena (Pisces)'         },
+  Krittika: { pada1: 'Mesha (Aries)',         other: 'Vrishabha (Taurus)'    },
+  Punarvasu: { pada1: 'Mithuna (Gemini)',      other: 'Karka (Cancer)'        }, // pada4→Cancer
+  Chitra:    { pada1: 'Kanya (Virgo)',         other: 'Tula (Libra)'          },
+  Vishakha:  { pada1: 'Tula (Libra)',          other: 'Vrishchika (Scorpio)'  },
+  Visakha:   { pada1: 'Tula (Libra)',          other: 'Vrishchika (Scorpio)'  },
+  'Uttara Phalguni': { pada1: 'Simha (Leo)',   other: 'Kanya (Virgo)'         },
+  UttaraPhalguni:   { pada1: 'Simha (Leo)',    other: 'Kanya (Virgo)'         },
+  Uttaraphalguni:   { pada1: 'Simha (Leo)',    other: 'Kanya (Virgo)'         },
+  'Uttara Ashadha': { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)' },
+  UttaraAshadha:    { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)' },
+  Uttarashada:      { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)' },
+  'Purva Bhadrapada': { pada1: 'Kumbha (Aquarius)', other: 'Meena (Pisces)'   },
+  PurvaBhadrapada:    { pada1: 'Kumbha (Aquarius)', other: 'Meena (Pisces)'   },
 }
 
 function nakToRasi(constellation: string): string {
-  // Input: "Hasta - 2" or "Hasta"
   const parts = constellation.split('-')
   const name  = parts[0].trim()
   const pada  = parts[1] ? parseInt(parts[1].trim()) : 0
-
-  // Check pada-split nakshatras
   const split = PADA_SPLIT[name]
-  if (split) {
-    return pada === 1 ? split.pada1 : split.other
-  }
-  // Also handle Punarvasu pada 4 → Cancer (special case)
-  if ((name === 'Punarvasu') && pada === 4) return 'Karka (Cancer)'
-
+  if (split) return pada === 1 ? split.pada1 : split.other
+  if (name === 'Punarvasu' && pada === 4) return 'Karka (Cancer)'
   return NAK_TO_RASI[name] ?? ''
 }
 
@@ -80,8 +79,12 @@ function nakToName(constellation: string): string {
   return constellation.split('-')[0].trim()
 }
 
-// ── Nominatim geocoding ───────────────────────────────────────────
-async function geocodePlace(place: string): Promise<{ lat: number; lon: number } | null> {
+function rasiToEng(rasi: string): string {
+  return rasi.match(/\(([^)]+)\)/)?.[1] ?? rasi
+}
+
+// ── Geocoding ─────────────────────────────────────────────────────
+async function geocodePlace(place: string): Promise<{ lat: number; lon: number; name: string } | null> {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`
   const res = await fetch(url, {
     headers: { 'User-Agent': 'MartmonyApp/1.0 (admin@martmony.com)' },
@@ -89,21 +92,114 @@ async function geocodePlace(place: string): Promise<{ lat: number; lon: number }
   })
   const data = await res.json() as any[]
   if (!data?.length) return null
-  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) }
+  return {
+    lat:  parseFloat(data[0].lat),
+    lon:  parseFloat(data[0].lon),
+    name: data[0].display_name?.split(',')[0] ?? place,
+  }
 }
 
-// ── VedAstro single calculation ───────────────────────────────────
-async function vedaCalc(
-  method: string, lat: number, lon: number,
-  hh: number, mm: number, dd: number, mo: number, yyyy: number,
-  tz = '+05:30'
-): Promise<any> {
-  const url = `${VEDASTRO}/api/Calculate/${method}/Location/${lat}/${lon}/Time/${hh}/${mm}/${dd}/${mo}/${yyyy}/${encodeURIComponent(tz)}`
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+// ── VedAstro POST calculation ─────────────────────────────────────
+// Correct format: POST /api/Calculate/{method}
+// Body: {"Time":{"StdTime":"HH:MM DD/MM/YYYY +05:30","Location":{"Name":"...","Latitude":...,"Longitude":...}}}
+async function vedaPost(method: string, stdTime: string, lat: number, lon: number, locName: string): Promise<any> {
+  const url  = `${VEDASTRO}/api/Calculate/${method}`
+  const body = {
+    Time: {
+      StdTime: stdTime,
+      Location: { Name: locName, Latitude: lat, Longitude: lon },
+    },
+  }
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(body),
+    signal:  AbortSignal.timeout(15000),
+  })
   if (!res.ok) throw new Error(`VedAstro HTTP ${res.status}`)
   const json = await res.json() as any
   if (json?.Status !== 'Pass') throw new Error(`VedAstro: ${json?.Payload ?? 'error'}`)
   return json.Payload
+}
+
+// ── Mangal Dosha analysis ─────────────────────────────────────────
+interface MangalDoshaDetail {
+  isDosha: boolean
+  marsHouseFromLagna: number | null
+  marsHouseFromMoon: number | null
+  severity: 'None' | 'Mild' | 'Moderate' | 'Strong' | 'Very Strong'
+  isCancelled: boolean
+  cancellationReasons: string[]
+  doshaHouses: { fromLagna: boolean; fromMoon: boolean }
+  explanation: string
+}
+
+const MANGAL_HOUSES = [1, 2, 4, 7, 8, 12]
+const SEVERITY_MAP: Record<number, 'Mild' | 'Moderate' | 'Strong' | 'Very Strong'> = {
+  1: 'Strong', 2: 'Moderate', 4: 'Moderate', 7: 'Very Strong', 8: 'Very Strong', 12: 'Mild',
+}
+
+function calcHouse(planetSign: number, refSign: number): number {
+  if (!planetSign || !refSign) return 0
+  return ((planetSign - refSign + 12) % 12) + 1
+}
+
+function analyzeMangalDosha(
+  marsSignNum: number, lagnaSignNum: number, moonSignNum: number, jupiterSignNum: number
+): MangalDoshaDetail {
+  const hFromLagna = calcHouse(marsSignNum, lagnaSignNum)
+  const hFromMoon  = calcHouse(marsSignNum, moonSignNum)
+
+  const doshaFromLagna = MANGAL_HOUSES.includes(hFromLagna)
+  const doshaFromMoon  = MANGAL_HOUSES.includes(hFromMoon)
+  const isDosha = doshaFromLagna  // primary check is from Lagna
+
+  // Cancellation rules
+  const cancellationReasons: string[] = []
+  // Mars in own sign (Aries=1 or Scorpio=8)
+  if (marsSignNum === 1 || marsSignNum === 8) {
+    cancellationReasons.push('Mars is in its own sign — dosha greatly reduced')
+  }
+  // Mars exalted in Capricorn
+  if (marsSignNum === 10) {
+    cancellationReasons.push('Mars is exalted (Capricorn) — dosha mitigated')
+  }
+  // Jupiter in Lagna cancels (benefic influence)
+  if (jupiterSignNum && jupiterSignNum === lagnaSignNum) {
+    cancellationReasons.push('Jupiter in Lagna — cancels Mangal Dosha')
+  }
+  // Aquarius or Cancer Lagna — special cancellation
+  if (lagnaSignNum === 11) cancellationReasons.push('Aquarius Lagna — natural cancellation')
+  if (lagnaSignNum === 4) cancellationReasons.push('Cancer Lagna — dosha not applicable')
+
+  const isCancelled = cancellationReasons.length > 0
+
+  const severity = !isDosha ? 'None'
+    : isCancelled ? 'Mild'
+    : SEVERITY_MAP[hFromLagna] ?? 'Moderate'
+
+  const houseNames: Record<number, string> = {
+    1: '1st (Lagna/Self)', 2: '2nd (Family/Wealth)', 4: '4th (Home/Happiness)',
+    7: '7th (Marriage/Partnership)', 8: '8th (Longevity)', 12: '12th (Expenditure)',
+  }
+
+  const explanation = !isDosha
+    ? `Mars is in the ${hFromLagna}th house from Lagna — not in a Mangal Dosha position. No dosha present.`
+    : isCancelled
+    ? `Mars is in the ${houseNames[hFromLagna] ?? `${hFromLagna}th house`} — Mangal Dosha is present but cancelled. ${cancellationReasons[0]}.`
+    : `Mars is in the ${houseNames[hFromLagna] ?? `${hFromLagna}th house`} — ${severity} Mangal Dosha. ` +
+      `This can affect the marriage house. Matching with another Manglik helps balance.`
+
+  return {
+    isDosha,
+    marsHouseFromLagna: hFromLagna || null,
+    marsHouseFromMoon:  hFromMoon  || null,
+    severity,
+    isCancelled,
+    cancellationReasons,
+    doshaHouses: { fromLagna: doshaFromLagna, fromMoon: doshaFromMoon },
+    explanation,
+  }
 }
 
 // ── POST /api/astro/calculate ─────────────────────────────────────
@@ -117,43 +213,51 @@ router.post('/calculate', async (req: Request, res: Response) => {
   }
 
   try {
+    // Parse date
     const dob = new Date(dateOfBirth)
-    const dd = dob.getUTCDate(), mo = dob.getUTCMonth() + 1, yyyy = dob.getUTCFullYear()
+    const dd   = String(dob.getUTCDate()).padStart(2, '0')
+    const mo   = String(dob.getUTCMonth() + 1).padStart(2, '0')
+    const yyyy = dob.getUTCFullYear()
 
-    let hh = 12, mm = 0
+    // Parse time
+    let hh = '12', mm = '00'
     if (birthTime) {
-      const [h, m] = birthTime.split(':').map(Number)
-      hh = isNaN(h) ? 12 : h
-      mm = isNaN(m) ? 0 : m
+      const parts = birthTime.split(':')
+      hh = String(parseInt(parts[0]) || 12).padStart(2, '0')
+      mm = String(parseInt(parts[1]) || 0).padStart(2, '0')
     }
 
+    // VedAstro StdTime format: "HH:MM DD/MM/YYYY +05:30"
+    const stdTime = `${hh}:${mm} ${dd}/${mo}/${yyyy} +05:30`
+
+    // Geocode
     const coords = await geocodePlace(birthPlace)
     if (!coords) {
       return res.status(400).json({
         success: false,
-        error: `Cannot find "${birthPlace}" — try "City, State" format`,
+        error: `Cannot locate "${birthPlace}" — try "City, State" format`,
       })
     }
 
-    // Three parallel VedAstro calls
+    // Three parallel VedAstro POST calls
     const [allConst, moonSignPayload, lagnaSignPayload] = await Promise.all([
-      vedaCalc('AllPlanetConstellation', coords.lat, coords.lon, hh, mm, dd, mo, yyyy),
-      vedaCalc('MoonSignName',           coords.lat, coords.lon, hh, mm, dd, mo, yyyy),
-      vedaCalc('LagnaSignName',          coords.lat, coords.lon, hh, mm, dd, mo, yyyy),
+      vedaPost('AllPlanetConstellation', stdTime, coords.lat, coords.lon, coords.name),
+      vedaPost('MoonSignName',           stdTime, coords.lat, coords.lon, coords.name),
+      vedaPost('LagnaSignName',          stdTime, coords.lat, coords.lon, coords.name),
     ])
 
-    // Build constellation map: planet → "Nakshatra - Pada"
+    // Build constellation map
     const constellations: Record<string, string> = {}
     for (const row of (allConst?.AllPlanetConstellation ?? [])) {
       constellations[(row.Planet as string).toLowerCase()] = row.AllPlanetConstellation ?? ''
     }
 
     // Nakshatra
-    const moonConst   = constellations['moon'] ?? ''
-    const nakshatra   = nakToName(moonConst)           // e.g. "Hasta"
-    const nakshatraPada = moonConst                    // e.g. "Hasta - 2"
+    const moonConst     = constellations['moon'] ?? ''
+    const nakshatra     = nakToName(moonConst)
+    const nakshatraPada = moonConst
 
-    // Rasi — prefer VedAstro's MoonSignName (English) → convert to Sanskrit+English form
+    // Rasi
     const moonSignEng: string = moonSignPayload?.MoonSignName ?? ''
     const rasi = moonSignEng ? (ENG_TO_RASI[moonSignEng] ?? moonSignEng) : nakToRasi(moonConst)
 
@@ -161,13 +265,20 @@ router.post('/calculate', async (req: Request, res: Response) => {
     const lagnaEng: string = lagnaSignPayload?.LagnaSignName ?? ''
     const lagna = ENG_TO_RASI[lagnaEng] ?? lagnaEng
 
-    // Mangal Dosha: Mars in houses 1,2,4,7,8,12 from Lagna
-    const lagnaNum = ENG_TO_NUM[lagnaEng] ?? 0
-    const marsRasi = nakToRasi(constellations['mars'] ?? '')
-    const marsEng  = marsRasi.match(/\(([^)]+)\)/)?.[1] ?? ''
-    const marsNum  = ENG_TO_NUM[marsEng] ?? 0
-    const marsHouse = lagnaNum && marsNum ? ((marsNum - lagnaNum + 12) % 12) + 1 : 0
-    const mangalDosha = [1, 2, 4, 7, 8, 12].includes(marsHouse)
+    // Sign numbers for Mangal Dosha calc
+    const marsRasiStr  = nakToRasi(constellations['mars']    ?? '')
+    const moonRasiStr  = moonSignEng ? (ENG_TO_RASI[moonSignEng] ?? '') : nakToRasi(moonConst)
+    const jupiterRasi  = nakToRasi(constellations['jupiter'] ?? '')
+
+    const marsNum    = ENG_TO_NUM[rasiToEng(marsRasiStr)]  ?? 0
+    const lagnaNum   = ENG_TO_NUM[lagnaEng]                ?? 0
+    const moonNum    = ENG_TO_NUM[moonSignEng]             ?? 0
+    const jupiterNum = ENG_TO_NUM[rasiToEng(jupiterRasi)]  ?? 0
+
+    const mangalDetail = analyzeMangalDosha(marsNum, lagnaNum, moonNum, jupiterNum)
+
+    // Build planets map
+    const buildRasi = (planet: string): string => nakToRasi(constellations[planet] ?? '')
 
     return res.json({
       success: true,
@@ -175,21 +286,23 @@ router.post('/calculate', async (req: Request, res: Response) => {
         nakshatra,
         nakshatraPada,
         rasi,
-        mangalDosha,
-        marsHouse: marsHouse || null,
         lagnaSign: lagna,
-        coordinates: coords,
+        coordinates: { lat: coords.lat, lon: coords.lon, placeName: coords.name },
+
+        mangalDosha: mangalDetail.isDosha && !mangalDetail.isCancelled,
+        mangalDoshaDetail: mangalDetail,
+
         planets: {
-          sun:     nakToRasi(constellations['sun']     ?? ''),
+          sun:     buildRasi('sun'),
           moon:    rasi,
-          mars:    nakToRasi(constellations['mars']    ?? ''),
-          mercury: nakToRasi(constellations['mercury'] ?? ''),
-          jupiter: nakToRasi(constellations['jupiter'] ?? ''),
-          venus:   nakToRasi(constellations['venus']   ?? ''),
-          saturn:  nakToRasi(constellations['saturn']  ?? ''),
-          rahu:    nakToRasi(constellations['rahu']    ?? ''),
-          ketu:    nakToRasi(constellations['ketu']    ?? ''),
-          lagna:   lagna,
+          mars:    marsRasiStr,
+          mercury: buildRasi('mercury'),
+          jupiter: jupiterRasi,
+          venus:   buildRasi('venus'),
+          saturn:  buildRasi('saturn'),
+          rahu:    buildRasi('rahu'),
+          ketu:    buildRasi('ketu'),
+          lagna,
         },
         constellations,
       },
