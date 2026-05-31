@@ -10,6 +10,8 @@ router.post('/', async (req: Request, res: Response) => {
   let groomNakshatra: string, brideNakshatra: string
   let groomMangal: boolean | null = null, brideMangal: boolean | null = null
 
+  let groomName: string | undefined, brideName: string | undefined
+
   if (body.groomProfileId && body.brideProfileId) {
     const [groom, bride] = await Promise.all([
       prisma.profile.findUnique({ where: { id: body.groomProfileId } }),
@@ -25,6 +27,8 @@ router.post('/', async (req: Request, res: Response) => {
     brideNakshatra = bride.nakshatra
     groomMangal    = groom.mangalDosha
     brideMangal    = bride.mangalDosha
+    groomName      = groom.name
+    brideName      = bride.name
   } else if (body.groomNakshatra && body.brideNakshatra) {
     groomNakshatra = body.groomNakshatra
     brideNakshatra = body.brideNakshatra
@@ -56,7 +60,7 @@ router.post('/', async (req: Request, res: Response) => {
       })
     }
 
-    return res.json({ success: true, data: result })
+    return res.json({ success: true, data: { ...result, groomName, brideName } })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Match calculation failed'
     return res.status(400).json({ success: false, error: message })
