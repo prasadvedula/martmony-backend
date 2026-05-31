@@ -7,7 +7,32 @@
  * 2. Fields separated by newlines in "Label: Value" format
  */
 
-import type { ProfileFormData } from '@/types'
+interface ProfileFormData {
+  name: string
+  gender: 'MALE' | 'FEMALE'
+  dateOfBirth: string
+  birthTime?: string
+  birthPlace: string
+  currentCity?: string
+  currentState?: string
+  caste: string
+  subCaste?: string
+  sakha?: string
+  gotram?: string
+  nakshatra: string
+  rashi?: string
+  mangalDosha?: boolean
+  surname?: string
+  heightCm?: number
+  education?: string
+  occupation?: string
+  annualIncomeLpa?: number
+  fatherName?: string
+  motherName?: string
+  familyType?: 'JOINT' | 'NUCLEAR' | 'EXTENDED'
+  contactEmail?: string
+  contactPhone?: string
+}
 
 export interface ParsedProfileDraft extends Partial<ProfileFormData> {
   rawText: string
