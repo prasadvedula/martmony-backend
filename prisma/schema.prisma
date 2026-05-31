@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProfileStatus {
+  PENDING_CONSENT
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+enum FamilyType {
+  JOINT
+  NUCLEAR
+  EXTENDED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  phone         String?   @unique
+  passwordHash  String?
+  name          String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile       Profile?  @relation("UserProfile")
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  id              String        @id @default(cuid())
+  userId          String?       @unique
+  user            User?         @relation("UserProfile", fields: [userId], references: [id], onDelete: SetNull)
+
+  name            String
+  gender          Gender
+  dateOfBirth     DateTime
+  birthTime       String?
+  birthPlace      String
+  currentCity     String?
+  currentState    String?
+
+  caste           String
+  subCaste        String?
+  sakha           String?
+  gotram          String?
+  nakshatra       String
+  rashi           String?
+  mangalDosha     Boolean       @default(false)
+  kuladeviTemple  String?
+
+  surname         String?
+
+  heightCm        Int?
+  complexion      String?
+  bodyType        String?
+
+  education       String?
+  educationDetail String?
+  occupation      String?
+  occupationDetail String?
+  annualIncomeLpa Float?
+
+  fatherName      String?
+  fatherOccupation String?
+  motherName      String?
+  motherOccupation String?
+  siblings        String?
+  familyType      FamilyType?
+  familyValues    String?
+
+  contactEmail    String?
+  contactPhone    String?
+
+  photoUrl        String?
+
+  status          ProfileStatus @default(PENDING_CONSENT)
+  consentGiven    Boolean       @default(false)
+  consentToken    String?       @unique
+  consentGivenAt  DateTime?
+
+  uploadedByAdmin Boolean       @default(false)
+  pdfUploadBatch  String?
+
+  prefAgeMin      Int?
+  prefAgeMax      Int?
+  prefCastes      String[]
+  prefStates      String[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  matchesAsGroom  MatchRecord[] @relation("GroomProfile")
+  matchesAsBride  MatchRecord[] @relation("BrideProfile")
+
+  @@index([nakshatra])
+  @@index([caste, subCaste])
+  @@index([gender, status])
+}
+
+model MatchRecord {
+  id              String    @id @default(cuid())
+  groomProfileId  String
+  brideProfileId  String
+  totalScore      Int
+  maxScore        Int       @default(36)
+  scoreBreakdown  Json
+  mangalStatus    String?
+  recommendation  String?
+  createdAt       DateTime  @default(now())
+
+  groomProfile    Profile   @relation("GroomProfile", fields: [groomProfileId], references: [id], onDelete: Cascade)
+  brideProfile    Profile   @relation("BrideProfile", fields: [brideProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([groomProfileId, brideProfileId])
+}
+
+model ConsentRequest {
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  profileId   String
+  email       String?
+  phone       String?
+  status      String    @default("PENDING")
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+}
