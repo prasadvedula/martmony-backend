@@ -39,9 +39,40 @@ const NAK_TO_RASI: Record<string, string> = {
   Revati: 'Meena (Pisces)',
 }
 
+// Nakshatras that span two signs (pada-dependent)
+const PADA_SPLIT: Record<string, { pada1: string; other: string }> = {
+  Krittika:        { pada1: 'Mesha (Aries)',        other: 'Vrishabha (Taurus)'    },
+  Mrigashira:      { pada1: 'Vrishabha (Taurus)',   other: 'Mithuna (Gemini)'       },
+  Mrigasira:       { pada1: 'Vrishabha (Taurus)',   other: 'Mithuna (Gemini)'       },
+  Chitra:          { pada1: 'Kanya (Virgo)',         other: 'Tula (Libra)'           },
+  Vishakha:        { pada1: 'Tula (Libra)',          other: 'Vrishchika (Scorpio)'   },
+  Punarvasu:       { pada1: 'Mithuna (Gemini)',      other: 'Karka (Cancer)'         }, // pada4→Cancer
+  'Uttara Phalguni': { pada1: 'Simha (Leo)',         other: 'Kanya (Virgo)'          },
+  Uttaraphalguni:  { pada1: 'Simha (Leo)',           other: 'Kanya (Virgo)'          },
+  UttaraPhalguni:  { pada1: 'Simha (Leo)',           other: 'Kanya (Virgo)'          },
+  'Uttara Ashadha': { pada1: 'Dhanu (Sagittarius)', other: 'Makara (Capricorn)'     },
+  Uttarashadha:    { pada1: 'Dhanu (Sagittarius)',  other: 'Makara (Capricorn)'     },
+  UttaraAshadha:   { pada1: 'Dhanu (Sagittarius)',  other: 'Makara (Capricorn)'     },
+  Uttarashada:     { pada1: 'Dhanu (Sagittarius)',  other: 'Makara (Capricorn)'     },
+  'Purva Bhadrapada': { pada1: 'Kumbha (Aquarius)', other: 'Meena (Pisces)'         },
+  Poorvabhadra:    { pada1: 'Kumbha (Aquarius)',    other: 'Meena (Pisces)'         },
+  PurvaBhadrapada: { pada1: 'Kumbha (Aquarius)',    other: 'Meena (Pisces)'         },
+}
+
 function nakToRasi(constellation: string): string {
   // Input: "Hasta - 2" or "Hasta"
-  const name = constellation.split('-')[0].trim()
+  const parts = constellation.split('-')
+  const name  = parts[0].trim()
+  const pada  = parts[1] ? parseInt(parts[1].trim()) : 0
+
+  // Check pada-split nakshatras
+  const split = PADA_SPLIT[name]
+  if (split) {
+    return pada === 1 ? split.pada1 : split.other
+  }
+  // Also handle Punarvasu pada 4 → Cancer (special case)
+  if ((name === 'Punarvasu') && pada === 4) return 'Karka (Cancer)'
+
   return NAK_TO_RASI[name] ?? ''
 }
 
