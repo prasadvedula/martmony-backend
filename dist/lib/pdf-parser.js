@@ -213,6 +213,10 @@ async function parsePdfBuffer(buffer) {
     const { isNKTFormat, parseNKTText } = await Promise.resolve().then(() => __importStar(require('./nkt-parser')));
     if (isNKTFormat(data.text))
         return parseNKTText(data.text);
+    // Daily Edition format (bilingual Telugu/English, one profile per page)
+    const { isDailyEditionFormat, parseDailyEditionText } = await Promise.resolve().then(() => __importStar(require('./daily-edition-parser')));
+    if (isDailyEditionFormat(data.text))
+        return parseDailyEditionText(data.text);
     const { parseKNBSText } = await Promise.resolve().then(() => __importStar(require('./knbs-parser')));
     // KNBS format has numbered entries like "1 12-05-1990"
     if (/^\d+\s+\d{2}-\d{2}-\d{4}/m.test(data.text)) {
