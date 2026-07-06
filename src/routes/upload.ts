@@ -44,6 +44,8 @@ router.post('/', adminMiddleware, upload.single('file'), async (req: AuthRequest
           fatherName: draft.fatherName ?? null, motherName: draft.motherName ?? null,
           familyType: draft.familyType ?? null,
           contactEmail: draft.contactEmail ?? null, contactPhone: draft.contactPhone ?? null,
+          prefAgeMin: draft.prefAgeMin ?? null, prefAgeMax: draft.prefAgeMax ?? null,
+          prefStates: draft.prefStates ?? [],
           status: 'PENDING_CONSENT', consentGiven: false, consentToken,
           uploadedByAdmin: true, pdfUploadBatch: batchId,
         },

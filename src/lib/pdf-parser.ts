@@ -38,6 +38,12 @@ export interface ParsedProfileDraft extends Partial<ProfileFormData> {
   rawText: string
   parseConfidence: 'HIGH' | 'MEDIUM' | 'LOW'
   warnings: string[]
+  // Extended fields used by NKT/structured parsers
+  surname?: string
+  sakha?: string
+  prefAgeMin?: number
+  prefAgeMax?: number
+  prefStates?: string[]
 }
 
 type FieldMap = Record<string, keyof ProfileFormData>
@@ -203,9 +209,30 @@ function parseBlock(raw: string): ParsedProfileDraft {
 }
 
 export async function parsePdfBuffer(buffer: Buffer): Promise<ParsedProfileDraft[]> {
-  // Dynamic import to keep server-only
   const pdfParse = (await import('pdf-parse')).default
   const data = await pdfParse(buffer)
+
+  const { isNKTFormat, parseNKTText } = await import('./nkt-parser')
+  if (isNKTFormat(data.text)) return parseNKTText(data.text)
+
+  const { parseKNBSText } = await import('./knbs-parser')
+  // KNBS format has numbered entries like "1 12-05-1990"
+  if (/^\d+\s+\d{2}-\d{2}-\d{4}/m.test(data.text)) {
+    const knbsDrafts = parseKNBSText(data.text)
+    return knbsDrafts.map(d => ({
+      name: d.name, gender: d.gender,
+      dateOfBirth: d.dateOfBirth.toISOString(),
+      birthTime: d.birthTime, birthPlace: 'Unknown',
+      currentCity: d.currentCity, currentState: d.currentState,
+      caste: d.caste, subCaste: d.subCaste, gotram: d.gotram,
+      nakshatra: d.nakshatra,
+      heightCm: d.heightCm, education: d.education,
+      occupation: d.occupation, annualIncomeLpa: d.annualIncomeLpa,
+      fatherName: d.fatherName, contactPhone: d.contactPhone,
+      rawText: d.rawText, parseConfidence: 'MEDIUM' as const, warnings: [],
+    }))
+  }
+
   const blocks = splitIntoBlocks(data.text)
   return blocks.map(parseBlock)
 }
