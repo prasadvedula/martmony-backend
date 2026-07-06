@@ -108,6 +108,7 @@ model Profile {
 
   uploadedByAdmin Boolean       @default(false)
   pdfUploadBatch  String?
+  profileSource   String?       // 'NKT' | 'KNBS' | 'PDF' | 'SELF_REG'
 
   prefAgeMin      Int?
   prefAgeMax      Int?

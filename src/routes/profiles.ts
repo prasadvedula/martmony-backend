@@ -26,7 +26,8 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response) => {
   const limitNum = Math.min(parseInt(limit), 50)
   const skip     = (pageNum - 1) * limitNum
 
-  const where: any = { status: 'ACTIVE' }
+  const isAdmin = req.user?.role === 'ADMIN'
+  const where: any = isAdmin ? {} : { status: 'ACTIVE' }
   if (gender)    where.gender = gender
   if (caste)     where.caste  = { contains: caste, mode: 'insensitive' }
   if (subCaste)  where.subCaste = { contains: subCaste, mode: 'insensitive' }
@@ -56,6 +57,7 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response) => {
         currentCity: true, currentState: true, photoUrl: true,
         education: true, occupation: true, heightCm: true,
         mangalDosha: true, gotram: true, birthPlace: true,
+        profileSource: true, uploadedByAdmin: true, status: true,
       },
     }),
     prisma.profile.count({ where }),
@@ -69,9 +71,10 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response) => {
 })
 
 // GET /api/profiles/:id
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response) => {
   const profile = await prisma.profile.findUnique({ where: { id: req.params.id } })
-  if (!profile || profile.status !== 'ACTIVE') {
+  const isAdmin = req.user?.role === 'ADMIN'
+  if (!profile || (!isAdmin && profile.status !== 'ACTIVE')) {
     return res.status(404).json({ success: false, error: 'Profile not found' })
   }
   return res.json({ success: true, data: profile })

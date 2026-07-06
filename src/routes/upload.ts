@@ -48,6 +48,7 @@ router.post('/', adminMiddleware, upload.single('file'), async (req: AuthRequest
           prefStates: draft.prefStates ?? [],
           status: 'PENDING_CONSENT', consentGiven: false, consentToken,
           uploadedByAdmin: true, pdfUploadBatch: batchId,
+          profileSource: draft.profileSource ?? 'PDF',
         },
       })
       await prisma.consentRequest.create({

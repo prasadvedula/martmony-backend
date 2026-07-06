@@ -44,6 +44,7 @@ export interface ParsedProfileDraft extends Partial<ProfileFormData> {
   prefAgeMin?: number
   prefAgeMax?: number
   prefStates?: string[]
+  profileSource?: 'NKT' | 'KNBS' | 'PDF' | 'SELF_REG'
 }
 
 type FieldMap = Record<string, keyof ProfileFormData>
@@ -230,9 +231,10 @@ export async function parsePdfBuffer(buffer: Buffer): Promise<ParsedProfileDraft
       occupation: d.occupation, annualIncomeLpa: d.annualIncomeLpa,
       fatherName: d.fatherName, contactPhone: d.contactPhone,
       rawText: d.rawText, parseConfidence: 'MEDIUM' as const, warnings: [],
+      profileSource: 'KNBS' as const,
     }))
   }
 
   const blocks = splitIntoBlocks(data.text)
-  return blocks.map(parseBlock)
+  return blocks.map(b => ({ ...parseBlock(b), profileSource: 'PDF' as const }))
 }

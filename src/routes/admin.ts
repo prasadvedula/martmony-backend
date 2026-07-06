@@ -17,19 +17,38 @@ router.get('/stats', adminMiddleware, async (_req: AuthRequest, res: Response) =
   return res.json({ success: true, data: { total, active, pendingConsent, rejected, male, female } })
 })
 
-// GET /api/admin/pending
-router.get('/pending', adminMiddleware, async (_req: AuthRequest, res: Response) => {
-  const profiles = await prisma.profile.findMany({
-    where: { status: 'PENDING_CONSENT' },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    select: {
-      id: true, name: true, gender: true, dateOfBirth: true,
-      caste: true, nakshatra: true, contactEmail: true, contactPhone: true,
-      consentToken: true, createdAt: true, uploadedByAdmin: true,
-    },
+// GET /api/admin/pending?page=1&limit=20
+router.get('/pending', adminMiddleware, async (req: AuthRequest, res: Response) => {
+  const page  = Math.max(1, parseInt(req.query.page  as string) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20))
+  const skip  = (page - 1) * limit
+
+  const where = { status: 'PENDING_CONSENT' } as const
+  const [total, profiles] = await Promise.all([
+    prisma.profile.count({ where }),
+    prisma.profile.findMany({
+      where, orderBy: { createdAt: 'desc' }, skip, take: limit,
+      select: {
+        id: true, name: true, gender: true, dateOfBirth: true,
+        caste: true, nakshatra: true, contactEmail: true, contactPhone: true,
+        consentToken: true, createdAt: true, uploadedByAdmin: true, profileSource: true,
+      },
+    }),
+  ])
+
+  return res.json({
+    success: true, data: profiles,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   })
-  return res.json({ success: true, data: profiles })
+})
+
+// PATCH /api/admin/pending/activate-all
+router.patch('/pending/activate-all', adminMiddleware, async (_req: AuthRequest, res: Response) => {
+  const result = await prisma.profile.updateMany({
+    where: { status: 'PENDING_CONSENT' },
+    data: { status: 'ACTIVE', consentGiven: true, consentGivenAt: new Date() },
+  })
+  return res.json({ success: true, activated: result.count })
 })
 
 // PATCH /api/admin/profiles/:id/activate

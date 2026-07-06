@@ -276,11 +276,12 @@ export function parseNKTEntry(
     rawText:         bodyText,
     parseConfidence,
     warnings,
+    profileSource:   'NKT' as const,
   }
 }
 
 // ── Top-level text parser ─────────────────────────────────────────────────────
-const NKT_CODE_RE = /\b(26[A-Z]\d*NKT\d+)\b/g
+const NKT_CODE_RE = /(26[A-Za-z]\d+NKT\d+)/g
 
 export function parseNKTText(text: string): ParsedProfileDraft[] {
   // Detect gender section
@@ -338,5 +339,5 @@ export async function parseNKTBuffer(buffer: Buffer): Promise<ParsedProfileDraft
 
 // Detect if text is NKT format
 export function isNKTFormat(text: string): boolean {
-  return /NITYA\s+KALYANAM/i.test(text) || /NKT\s+List\s+No/i.test(text) || /26[A-Z]\d*NKT\d+/.test(text)
+  return /NITYA\s+KALYANAM/i.test(text) || /NKT\s+List\s+No/i.test(text) || /26[A-Za-z]\d+NKT\d+/.test(text)
 }
