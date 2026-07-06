@@ -16,12 +16,19 @@ router.get('/stats', auth_1.adminMiddleware, async (_req, res) => {
     ]);
     return res.json({ success: true, data: { total, active, pendingConsent, rejected, male, female } });
 });
-// GET /api/admin/pending?page=1&limit=20
+// GET /api/admin/pending?page=1&limit=20&gender=&source=&name=
 router.get('/pending', auth_1.adminMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    const { gender, source, name } = req.query;
     const where = { status: 'PENDING_CONSENT' };
+    if (gender)
+        where.gender = gender;
+    if (source)
+        where.profileSource = source;
+    if (name)
+        where.name = { contains: name, mode: 'insensitive' };
     const [total, profiles] = await Promise.all([
         prisma_1.prisma.profile.count({ where }),
         prisma_1.prisma.profile.findMany({

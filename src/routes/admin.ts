@@ -17,13 +17,18 @@ router.get('/stats', adminMiddleware, async (_req: AuthRequest, res: Response) =
   return res.json({ success: true, data: { total, active, pendingConsent, rejected, male, female } })
 })
 
-// GET /api/admin/pending?page=1&limit=20
+// GET /api/admin/pending?page=1&limit=20&gender=&source=&name=
 router.get('/pending', adminMiddleware, async (req: AuthRequest, res: Response) => {
-  const page  = Math.max(1, parseInt(req.query.page  as string) || 1)
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20))
-  const skip  = (page - 1) * limit
+  const page   = Math.max(1, parseInt(req.query.page  as string) || 1)
+  const limit  = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20))
+  const skip   = (page - 1) * limit
+  const { gender, source, name } = req.query as Record<string, string>
 
-  const where = { status: 'PENDING_CONSENT' } as const
+  const where: any = { status: 'PENDING_CONSENT' }
+  if (gender) where.gender = gender
+  if (source) where.profileSource = source
+  if (name)   where.name = { contains: name, mode: 'insensitive' }
+
   const [total, profiles] = await Promise.all([
     prisma.profile.count({ where }),
     prisma.profile.findMany({
