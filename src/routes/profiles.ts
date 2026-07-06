@@ -18,7 +18,8 @@ const upload = multer({
 // GET /api/profiles
 router.get('/', optionalAuth, async (req: AuthRequest, res: Response) => {
   const {
-    gender, ageMin, ageMax, caste, subCaste, nakshatra, state,
+    gender, ageMin, ageMax, caste, subCaste, mangalDosha,
+    education, occupation, heightMin, heightMax,
     page = '1', limit = '20',
   } = req.query as Record<string, string>
 
@@ -28,11 +29,13 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response) => {
 
   const isAdmin = req.user?.role === 'ADMIN'
   const where: any = isAdmin ? {} : { status: 'ACTIVE' }
-  if (gender)    where.gender = gender
-  if (caste)     where.caste  = { contains: caste, mode: 'insensitive' }
-  if (subCaste)  where.subCaste = { contains: subCaste, mode: 'insensitive' }
-  if (nakshatra) where.nakshatra = { contains: nakshatra, mode: 'insensitive' }
-  if (state)     where.currentState = { contains: state, mode: 'insensitive' }
+  if (gender)     where.gender    = gender
+  if (caste)      where.caste     = { contains: caste, mode: 'insensitive' }
+  if (subCaste)   where.subCaste  = { contains: subCaste, mode: 'insensitive' }
+  if (education)  where.education = { contains: education, mode: 'insensitive' }
+  if (occupation) where.occupation = { contains: occupation, mode: 'insensitive' }
+  if (mangalDosha === 'true')  where.mangalDosha = true
+  if (mangalDosha === 'false') where.mangalDosha = false
 
   if (ageMin || ageMax) {
     const now = new Date()
@@ -45,6 +48,12 @@ router.get('/', optionalAuth, async (req: AuthRequest, res: Response) => {
       const d = new Date(now); d.setFullYear(now.getFullYear() - parseInt(ageMin))
       where.dateOfBirth.lte = d
     }
+  }
+
+  if (heightMin || heightMax) {
+    where.heightCm = {}
+    if (heightMin) where.heightCm.gte = parseInt(heightMin)
+    if (heightMax) where.heightCm.lte = parseInt(heightMax)
   }
 
   const [profiles, total] = await Promise.all([

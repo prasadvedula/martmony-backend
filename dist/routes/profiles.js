@@ -19,7 +19,7 @@ const upload = (0, multer_1.default)({
 });
 // GET /api/profiles
 router.get('/', auth_1.optionalAuth, async (req, res) => {
-    const { gender, ageMin, ageMax, caste, subCaste, nakshatra, state, page = '1', limit = '20', } = req.query;
+    const { gender, ageMin, ageMax, caste, subCaste, mangalDosha, education, occupation, heightMin, heightMax, page = '1', limit = '20', } = req.query;
     const pageNum = parseInt(page);
     const limitNum = Math.min(parseInt(limit), 50);
     const skip = (pageNum - 1) * limitNum;
@@ -31,10 +31,14 @@ router.get('/', auth_1.optionalAuth, async (req, res) => {
         where.caste = { contains: caste, mode: 'insensitive' };
     if (subCaste)
         where.subCaste = { contains: subCaste, mode: 'insensitive' };
-    if (nakshatra)
-        where.nakshatra = { contains: nakshatra, mode: 'insensitive' };
-    if (state)
-        where.currentState = { contains: state, mode: 'insensitive' };
+    if (education)
+        where.education = { contains: education, mode: 'insensitive' };
+    if (occupation)
+        where.occupation = { contains: occupation, mode: 'insensitive' };
+    if (mangalDosha === 'true')
+        where.mangalDosha = true;
+    if (mangalDosha === 'false')
+        where.mangalDosha = false;
     if (ageMin || ageMax) {
         const now = new Date();
         where.dateOfBirth = {};
@@ -48,6 +52,13 @@ router.get('/', auth_1.optionalAuth, async (req, res) => {
             d.setFullYear(now.getFullYear() - parseInt(ageMin));
             where.dateOfBirth.lte = d;
         }
+    }
+    if (heightMin || heightMax) {
+        where.heightCm = {};
+        if (heightMin)
+            where.heightCm.gte = parseInt(heightMin);
+        if (heightMax)
+            where.heightCm.lte = parseInt(heightMax);
     }
     const [profiles, total] = await Promise.all([
         prisma_1.prisma.profile.findMany({
